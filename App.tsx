@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Sparkles, PenTool, Terminal, RefreshCw, AlertTriangle, 
+import {
+  Sparkles, PenTool, Terminal, AlertTriangle, 
   ScanFace, Palette, Package, Type, Sliders, Lightbulb,
   Smartphone, RectangleVertical, Square, RectangleHorizontal, Monitor, Settings,
   Video, Lock
@@ -11,6 +11,7 @@ import { generatePrompts } from './services/geminiService';
 import { getCurrentUser, logoutUser, deductCredit, saveHistory } from './services/mockBackend';
 import UploadBox from './components/UploadBox';
 import ConceptCard from './components/ConceptCard';
+import ErrorBoundary from './components/ErrorBoundary';
 import AuthScreen from './components/AuthScreen';
 import PricingModal from './components/PricingModal';
 import Header from './components/Header';
@@ -136,6 +137,17 @@ export default function App() {
     setCurrentView('landing'); // Go back to landing on logout
   };
 
+  useEffect(() => {
+    // Log concepts shape to help debugging DOM insertion errors
+    if (concepts && concepts.length > 0) {
+      try {
+        console.log('DEBUG: concepts payload', JSON.parse(JSON.stringify(concepts)));
+      } catch (e) {
+        console.log('DEBUG: concepts (non-serializable)', concepts);
+      }
+    }
+  }, [concepts]);
+
   if (initializing) return null;
 
   return (
@@ -152,6 +164,7 @@ export default function App() {
       ) : currentView === 'admin' && user.isAdmin ? (
         <AdminGallery onBack={() => setCurrentView('app')} />
       ) : (
+        <ErrorBoundary onReset={() => setConcepts([])}>
         <>
           <Header 
             user={user} 
@@ -362,12 +375,18 @@ export default function App() {
                   >
                     {isGenerating ? (
                       <>
-                        <RefreshCw className="animate-spin" size={18} /> Analisando & Criando...
+                        <span className="inline-block animate-spin">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 6v6l4 2"></path>
+                          </svg>
+                        </span>
+                        Analisando & Criando...
                       </>
                     ) : (
                       <>
                         <Sparkles size={18} className="group-hover:scale-110 transition-transform" /> 
-                        {user.plan === 'ultra' ? 'Gerar Conceitos (Ilimitado)' : `Gerar (-1 Crédito)`}
+                        {user.credits > 0 ? `Gerar (-1 Crédito)` : 'Créditos Insuficientes'}
                       </>
                     )}
                   </button>
@@ -416,24 +435,61 @@ export default function App() {
                     </div>
                   )}
 
-                  {concepts.map((concept, idx) => (
-                    <ConceptCard 
-                      key={idx} 
-                      concept={concept} 
-                      index={idx}
-                      selectedRatio={selectedRatio}
-                      hasBaseImage={!!baseImage}
-                      hasStyleImage={!!styleImage}
-                      hasProductImage={!!productImage}
-                      styleFidelity={styleFidelity}
-                      includeHeadline={includeHeadline}
-                    />
-                  ))}
+                  {/* Filtra conceitos inválidos para evitar erro de DOM */}
+                  {(() => {
+                    // Função simples de hash para garantir key única
+                    function simpleHash(obj) {
+                      return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).slice(0,12);
+                    }
+                    const validConcepts = concepts.filter(
+                      c => c && typeof c === 'object' &&
+                        typeof c.headline === 'string' &&
+                        typeof c.explanation === 'string' &&
+                        typeof c.prompt === 'string' &&
+                        typeof c.negative_prompt === 'string' &&
+                        typeof c.instagram_caption === 'string'
+                    );
+                    const keys = validConcepts.map((c, idx) => simpleHash({
+                      h: c.headline, e: c.explanation, p: c.prompt, n: c.negative_prompt, i: c.instagram_caption, idx
+                    }));
+                    console.log('Keys dos ConceptCards:', keys);
+                    return validConcepts.map((concept, idx) => {
+                      const key = keys[idx];
+                      console.log('Renderizando ConceptCard', { idx, key, concept });
+                      return (
+                        <ConceptCard 
+                          key={key}
+                          concept={concept} 
+                          index={idx}
+                          selectedRatio={selectedRatio}
+                          hasBaseImage={!!baseImage}
+                          hasStyleImage={!!styleImage}
+                          hasProductImage={!!productImage}
+                          styleFidelity={styleFidelity}
+                          includeHeadline={includeHeadline}
+                        />
+                      );
+                    });
+                  })()}
+                  {/* Loga se algum conceito foi filtrado */}
+                  {concepts.length > 0 && concepts.filter(
+                    c => !c || typeof c !== 'object' ||
+                      typeof c.headline !== 'string' ||
+                      typeof c.explanation !== 'string' ||
+                      typeof c.prompt !== 'string' ||
+                      typeof c.negative_prompt !== 'string' ||
+                      typeof c.instagram_caption !== 'string'
+                  ).length > 0 && (
+                    <div className="bg-red-900/60 text-red-200 p-2 rounded text-xs">
+                      Atenção: Alguns conceitos foram ignorados por formato inválido. Veja o console para detalhes.
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
           </main>
         </>
+        </ErrorBoundary>
       )}
     </div>
   );
