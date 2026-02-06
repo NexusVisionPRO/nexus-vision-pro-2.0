@@ -81,8 +81,8 @@ export default function App() {
     if (!user) return;
     if (!niche || !theme) return;
 
-    // Check Credits
-    if (user.plan !== 'ultra' && user.credits <= 0) {
+    // Check Credits (all plans have credit limits now)
+    if (user.credits <= 0) {
       setShowPricing(true);
       return;
     }

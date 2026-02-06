@@ -87,7 +87,7 @@ const PricingModal: React.FC<PricingModalProps> = ({ userId, onClose, onSuccess 
           
           <div className="flex flex-col mt-2">
             <p className="text-sm font-medium text-purple-300">
-               {type === 'ultra' ? 'Gerações Ilimitadas' : `${planData.credits} Gerações`}
+               {`${planData.credits} Gerações`}
             </p>
             {isYearly && (
                <span className="text-[10px] text-green-400 font-bold bg-green-500/10 inline-block px-2 py-0.5 rounded w-fit mt-1">

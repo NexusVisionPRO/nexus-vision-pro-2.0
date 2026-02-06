@@ -9,7 +9,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ user, onLogout, onOpenPricing }) => {
-  const isUltra = user.plan === 'ultra';
+  const isUltra = user.plan === 'ultra' || user.plan === 'ultra_yearly';
 
   return (
     <nav className="border-b border-white/5 bg-[#0f1115]/80 backdrop-blur-md sticky top-0 z-50">
@@ -33,7 +33,7 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onOpenPricing }) => {
           >
             {isUltra ? <Zap size={14} className="text-yellow-400" /> : <Coins size={14} className="text-yellow-400" />}
             <span className={`text-xs font-bold ${isUltra ? 'text-yellow-400' : 'text-slate-200'}`}>
-              {isUltra ? 'ILIMITADO' : `${user.credits} Créditos`}
+              {`${user.credits} Créditos`}
             </span>
             {!isUltra && (
               <span className="text-[10px] bg-purple-600 text-white px-1.5 py-0.5 rounded ml-1 group-hover:bg-purple-500">

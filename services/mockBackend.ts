@@ -98,17 +98,17 @@ export const getCurrentUser = (): User | null => {
 
 // Updated Plans: Credits adjusted & Annual plans added (15% discount)
 export const PLANS: Record<PlanType, { price: number, credits: number, name: string }> = {
-  free: { price: 0, credits: 5, name: 'Free' },
+  free: { price: 0, credits: 5, name: 'Livre' },
   
-  // Monthly
-  starter: { price: 19, credits: 20, name: 'Starter' },
-  pro: { price: 39, credits: 50, name: 'Pro' },
-  ultra: { price: 168, credits: Infinity, name: 'Ultra' },
+  // Monthly (Opção 3 - Balanceada)
+  starter: { price: 49, credits: 75, name: 'Iniciante' },
+  pro: { price: 129, credits: 250, name: 'Pró' },
+  ultra: { price: 299, credits: 750, name: 'Ultra' },
 
-  // Annual (Price = Monthly * 12 * 0.85) | Credits = Monthly * 12 (Bulk)
-  starter_yearly: { price: 193, credits: 240, name: 'Starter Anual' }, // ~193.8
-  pro_yearly: { price: 397, credits: 600, name: 'Pro Anual' }, // ~397.8
-  ultra_yearly: { price: 1713, credits: Infinity, name: 'Ultra Anual' } // ~1713.6
+  // Annual (Price = Monthly * 12 * 0.85) | Credits = Monthly * 12 (Bulk discount)
+  starter_yearly: { price: 499, credits: 900, name: 'Iniciante Anual' }, // 49 * 12 * 0.85
+  pro_yearly: { price: 1318, credits: 3000, name: 'Pró Anual' }, // 129 * 12 * 0.85
+  ultra_yearly: { price: 3059, credits: 9000, name: 'Ultra Anual' } // 299 * 12 * 0.85
 };
 
 export const processPayment = async (userId: string, plan: PlanType): Promise<User> => {
@@ -124,14 +124,10 @@ export const processPayment = async (userId: string, plan: PlanType): Promise<Us
   // Update User
   db.users[userIndex].plan = plan;
   
-  // If Ultra (or yearly ultra), credits are infinite.
-  if (plan === 'ultra' || plan === 'ultra_yearly') {
-    db.users[userIndex].credits = 999999; 
-  } else {
-    // Strategy: Buying a plan ADDS credits to current balance
-    const current = db.users[userIndex].credits > 900000 ? 0 : db.users[userIndex].credits;
-    db.users[userIndex].credits = current + selectedPlan.credits;
-  }
+  // Strategy: Buying a plan ADDS credits to current balance
+  // All plans now have specific credit limits (no more Infinity)
+  const current = db.users[userIndex].credits;
+  db.users[userIndex].credits = current + selectedPlan.credits;
   
   saveDB(db);
   const updatedUser = db.users[userIndex];
@@ -145,12 +141,9 @@ export const deductCredit = async (userId: string): Promise<User> => {
   const userIndex = db.users.findIndex(u => u.id === userId);
   
   if (userIndex === -1 && userId !== 'admin-id') throw new Error("User not found");
-  if (userId === 'admin-id') return getCurrentUser()!; // Admin has infinite
+  if (userId === 'admin-id') return getCurrentUser()!; // Admin has Infinity
 
   const user = db.users[userIndex];
-  
-  // Check if plan string contains 'ultra'
-  if (user.plan.includes('ultra')) return user; // Don't deduct for Ultra
   
   if (user.credits <= 0) throw new Error("Créditos insuficientes.");
   
